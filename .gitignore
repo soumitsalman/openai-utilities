@@ -2,3 +2,6 @@
 __pycache__
 openai_connectors/__pycache__
 test_*
+openai_utilities.egg-info
+build
+dist
