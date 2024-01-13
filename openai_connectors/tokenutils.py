@@ -5,28 +5,34 @@ from functools import reduce
 # these are the currently supported context window limit (token limit of the entire chat thread) in each model
 # this can change in future and will need updating
 CONTEXT_WINDOW = {
+    # this is based on https://app.endpoints.anyscale.com/docs
     "mistralai/Mixtral-8x7B-Instruct-v0.1": 32768,
-    "mistralai/Mistral-7B-Instruct-v0.1": 500, #16384,
-    "HuggingFaceH4/zephyr-7b-beta": 600, #16384,
+    "mistralai/Mistral-7B-Instruct-v0.1": 16384,
+    "HuggingFaceH4/zephyr-7b-beta": 16384,
     "codellama/CodeLlama-34b-Instruct-hf": 16384,
-    "meta-llama/Llama-2-13b-chat-hf": 4096,    
+    "meta-llama/Llama-2-13b-chat-hf": 4096,   
+    "thenlper/gte-large": 512, #embedding
+
+    # this is based on https://platform.openai.com/docs/models/overview
     "gpt-4-1106-preview": 128000,
-    "gpt-3.5-turbo-1106": 600, #16385,
-    # "thenlper/gte-large": 512, #embedding
-    # "text-embedding-ada-002": 8192 # embedding model
+    "gpt-3.5-turbo-1106": 16385,
+    "text-embedding-ada-002": 8192 # embedding model
 }
 
 # in addition to context window each message also has a max allowed size
 MESSAGE_TOKEN_LIMIT = {
+    # this is based on https://app.endpoints.anyscale.com/docs
     "mistralai/Mixtral-8x7B-Instruct-v0.1": 4096,
-    "mistralai/Mistral-7B-Instruct-v0.1": 300, #4096,
-    "HuggingFaceH4/zephyr-7b-beta": 300, #4096,
+    "mistralai/Mistral-7B-Instruct-v0.1": 4096,
+    "HuggingFaceH4/zephyr-7b-beta": 4096,
     "codellama/CodeLlama-34b-Instruct-hf": 4096,
     "meta-llama/Llama-2-13b-chat-hf": 1024,    
+    "thenlper/gte-large": 512, # embedding model
+        
+    # this is based on https://platform.openai.com/docs/models/overview
     "gpt-4-1106-preview": 4096,
-    "gpt-3.5-turbo-1106": 300, #4096,
-    # "thenlper/gte-large": 512, # embedding model
-    # "text-embedding-ada-002": 2048 # embedding model
+    "gpt-3.5-turbo-1106": 4096,
+    "text-embedding-ada-002": 2047 # embedding model
 }
 
 # every user message follows <|start|>{role/name}\n{content}<|end|>\n
@@ -36,6 +42,16 @@ MSG_PADDING_BUFFER_TOKENS = 4
 
 # this lambda is used multiple times in the following codes
 ADD_FUNC = lambda x, y: x + y
+
+# counts the number of tokens in a string
+def count_tokens(content: str, model: str) -> int:    
+    try:
+        encoding = tiktoken.get_encoding(model)
+    except:
+        # cl100k_base is default encoding model
+        encoding = tiktoken.get_encoding("cl100k_base") 
+    tokens = encoding.encode(content)
+    return len(tokens)
 
 # counts the number of token for 1 message
 def count_tokens_for_message(message, model) -> int:
@@ -50,16 +66,6 @@ def count_tokens_for_messages(messages, model) -> int:
         ADD_FUNC,
         [count_tokens_for_message(msg, model) for msg in messages]
     )
-
-# counts the number of tokens in a string
-def count_tokens(content: str, model: str) -> int:    
-    try:
-        encoding = tiktoken.get_encoding(model)
-    except:
-        # cl100k_base is default encoding model
-        encoding = tiktoken.get_encoding("cl100k_base") 
-    tokens = encoding.encode(content)
-    return len(tokens)
 
 # splits the content into multiple message contents if the content exceeds the max token limit of a message for that model
 def split_content(content: str, model: str) -> list[str]:

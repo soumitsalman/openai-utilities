@@ -1,7 +1,7 @@
 from enum import Enum
 import openai
-from openai_connectors.tokenutils import count_tokens_for_messages, count_tokens_for_message, split_content, MESSAGE_TOKEN_LIMIT, CONTEXT_WINDOW
-from openai_connectors.retryutils import retry_after_random_wait
+from .tokenutils import count_tokens_for_messages, count_tokens_for_message, split_content, MESSAGE_TOKEN_LIMIT, CONTEXT_WINDOW
+from .retryutils import retry_after_random_wait
 from icecream import ic
 
 # the currently supported models in this code

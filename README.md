@@ -15,8 +15,7 @@ This is a privately maintained wrapper library on top of openai python Driver/SD
 <Coming soon>
 
 ## Contribution Guideline:
-Feel free to make contributions to the code. There is currently no test automation or github workflow set up. So #YOLO
-If you want more wrapped capabilities feel free to reach out.
+Feel free to make contributions to the code. There is currently no test automation or github workflow set up. So #YOLO. If you want more wrapped capabilities feel free to reach out.
 
 ## Disclaimer:
 This is privately maintained by the developer. The developer as no association to openai.org or anyscale.com on a commercial level.
