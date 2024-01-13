@@ -5,3 +5,4 @@ test_*
 openai_utilities.egg-info
 build
 dist
+*.env

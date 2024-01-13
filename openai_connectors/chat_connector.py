@@ -32,14 +32,14 @@ class OpenAIChatSession:
     # service_url is primarily for anyscale hosted services
     def __init__(
             self, 
-            chat_model: str,
+            model: str,
             instruction: str,            
             service_api_key: str, 
             service_org_id: str = None, 
             service_url: str = None):
         
         self.openai_client = openai.OpenAI(api_key=service_api_key, organization=service_org_id, base_url=service_url)
-        self.model = chat_model
+        self.model = model
         self.instruction = instruction
         self.thread = []
         self.reset_window()
