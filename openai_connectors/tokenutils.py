@@ -22,11 +22,11 @@ CONTEXT_WINDOW = {
 # in addition to context window each message also has a max allowed size
 MESSAGE_TOKEN_LIMIT = {
     # this is based on https://app.endpoints.anyscale.com/docs
-    "mistralai/Mixtral-8x7B-Instruct-v0.1": 4096,
-    "mistralai/Mistral-7B-Instruct-v0.1": 4096,
-    "HuggingFaceH4/zephyr-7b-beta": 4096,
-    "codellama/CodeLlama-34b-Instruct-hf": 4096,
-    "meta-llama/Llama-2-13b-chat-hf": 1024,    
+    "mistralai/Mixtral-8x7B-Instruct-v0.1": 1024,
+    "mistralai/Mistral-7B-Instruct-v0.1": 1024,
+    "HuggingFaceH4/zephyr-7b-beta": 512,
+    "codellama/CodeLlama-34b-Instruct-hf": 1024,
+    "meta-llama/Llama-2-13b-chat-hf": 512,    
     "thenlper/gte-large": 512, # embedding model
         
     # this is based on https://platform.openai.com/docs/models/overview

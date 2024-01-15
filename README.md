@@ -12,7 +12,7 @@ This is a privately maintained wrapper library on top of openai python Driver/SD
 - chat_connector.py: contains OpenAIChatSession class provides a chat session/thread management wrapper that deals with rate limit error, context window resizing and large message splitting under the hood
 
 ## Usage Documentation:
-<Coming soon>
+Look at `examples/openai_example.py` for usage.
 
 ## Contribution Guideline:
 Feel free to make contributions to the code. There is currently no test automation or github workflow set up. So #YOLO. If you want more wrapped capabilities feel free to reach out.
