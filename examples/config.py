@@ -1,11 +1,13 @@
 import os
-import openai_connectors.chat_connector
 
 def get_llm_service_api_key() -> str:
-    return os.getenv("ANYSCALE_API_KEY")
+    return os.getenv("LLM_SERVICE_API_KEY")
 
 def get_llm_service_base_url() -> str:
-    return os.getenv("ANYSCALE_BASE_URL")
+    return os.getenv("LLM_SERVICE_BASE_URL")
 
-def get_ll_model() -> str:
-    return openai_connectors.chat_connector.OpenAIModels.ZEPHYR_7B.value
+def get_llm_service_model() -> str:
+    return os.getenv("LLM_SERVICE_MODEL")
+
+def get_llm_service_organization() -> str:
+    return os.getenv("LLM_SERVICE_ORGANIZATION")

@@ -10,6 +10,16 @@ This is a privately maintained wrapper library on top of openai python Driver/SD
 ## Features:
 - tokenutils.py: contains functions for counting tokens and splitting messages based on the models token size. 
 - chat_connector.py: contains OpenAIChatSession class provides a chat session/thread management wrapper that deals with rate limit error, context window resizing and large message splitting under the hood
+    - allows for JSON mode (set at the begining of the session initiation)
+    - allows model change in the middle of a thread. Automatically splits the existing thread to adjust of reduced message token limit if the new model's limit is lower
+
+### Missing Features:
+- [ ] Function callback
+- [ ] File upload for indexing
+- [ ] Text-to-File upload for indexing
+
+### Known Bugs:
+anyscale.com endpoints cannot support more than 1 system message in a thread. However, openai.com endpoints are able to support multiple system messages.
 
 ## Usage Documentation:
 Look at `examples/openai_example.py` for usage.

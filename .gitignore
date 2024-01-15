@@ -6,3 +6,4 @@ openai_utilities.egg-info
 build
 dist
 *.env
+run_examples.py

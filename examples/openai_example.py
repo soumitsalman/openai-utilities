@@ -1,7 +1,10 @@
-import config
+import openai
+from . import config
 from openai_connectors.chat_connector import OpenAIChatSession, OpenAIModels, create_message
+from openai_connectors.retryutils import retry_after_random_wait
 from openai_connectors.tokenutils import count_tokens, count_tokens_for_messages, split_content
 from icecream import ic
+import json
 
 # testing tokencounts
 def example_count_tokens():
@@ -15,9 +18,9 @@ def example_count_tokens():
     ]
 
     # count token for 1 string
-    ic(count_tokens(contents[0], config.get_ll_model()))    
+    ic(count_tokens(contents[0], config.get_llm_service_model()))    
     # count tokens for multiple messages with role information in it
-    ic(count_tokens_for_messages([create_message("user", msg) for msg in contents], config.get_ll_model()))
+    ic(count_tokens_for_messages([create_message("user", msg) for msg in contents], config.get_llm_service_model()))
 
 # testing splitting of 1 large message into multiple smaller messages
 def example_split_content():
@@ -33,17 +36,19 @@ But Amelia's true treasure wasn't the gold or jewels; it was the knowledge that 
 And so, the village prospered not just from their newfound riches, but from the lessons learned from the curious girl who had uncovered the secret of the old oak tree. Amelia's spirit of adventure and thirst for knowledge inspired generations to come, reminding them that there is magic in the world for those who dare to seek it.
 And they all lived happily ever after, in a village where curiosity was celebrated, and the old oak tree continued to whisper its secrets to those who were willing to listen."""
     large_content = " ".join([msg_seed] * 20)
-    ic(len(split_content(large_content, config.get_ll_model())))
+    ic(len(split_content(large_content, config.get_llm_service_model())))
 
 # testing chat session
-def example_chat_session():    
+# the retry decorator here is for dealing with rate limit. This number should change with different services
+@retry_after_random_wait(min_wait=61, max_wait=240, retry_count=5, errors=(openai.RateLimitError))
+def example_chat_session(): 
     messages = [f"generate python code for printing {i} to {i+10}." for i in range(0, 100, 10)]
 
     session = OpenAIChatSession(
-        model = config.get_ll_model(), 
-        instruction="you are a verbose programming helper", 
-        service_api_key=config.get_llm_service_api_key(),
-        service_url=config.get_llm_service_base_url() # this is primarily for anyscale apis
+        model = config.get_llm_service_model(), 
+        instructions="you are a verbose programming helper", 
+        api_key=config.get_llm_service_api_key(),
+        base_url=config.get_llm_service_base_url() # this is primarily for anyscale apis
     )
 
     for msg in messages:
@@ -52,8 +57,80 @@ def example_chat_session():
         # gets the response and prints
         ic(session.run_thread())
 
+@retry_after_random_wait(min_wait=61, max_wait=240, retry_count=5, errors=(openai.RateLimitError))
+def example_chat_session_json_mode(): 
+    session = OpenAIChatSession(
+        # Currently JSON mode is supported by the following models
+        # anyscale.com --> "mistralai/Mistral-7B-Instruct-v0.1"
+        # anyscale.com --> "mistralai/Mixtral-8x7B-Instruct-v0.1"
+        # openai.com --> gpt-4-1106-preview
+        # openai.com --> gpt-3.5-turbo-1106
+        model = config.get_llm_service_model(),          
+        api_key=config.get_llm_service_api_key(),
+        base_url=config.get_llm_service_base_url(), # this is primarily for anyscale apis
+        instructions="You read chatlogs between multiple people create responses based on user prompt. You provide all your output in JSON format",
+        json_mode=True       
+        #schema is optional
+    )
 
-if __name__ == "__main__":
-    example_count_tokens()
-    example_split_content()
-    example_chat_session()
+    messages = [
+        "Determine how many people are in the chat, a summary of what they are talking about and who talks the most. Provide the output in a JSON format",
+        """Johnnie Walker: Hey everyone, how's it going?
+        Jim Bean: Hey Johnnie! Not too shabby, just another day at the office. How about you?
+        Gin Aviator: Hey there, folks! I'm fantastic, as usual, and I've got so much to share!
+        Gin Aviator: You won't believe the hilarious meme I saw today. It had me laughing for ages!
+        Gin Aviator: Also, I tried this new recipe last night, and it was to die for. It's all about that culinary adventure, you know?
+        Jim Bean: That sounds great, Gin! I'm down for an action movie.
+        Jose Cuervo: ¡Hola a todos! Estoy muy bien, disfrutando del fin de semana.
+        Jose Cuervo: Claro, Jim. Este fin de semana planeo relajarme y ver una buena película.
+        Jose Cuervo: Sería genial si te unieras, Johnnie.
+        Jim Bean: So, Johnnie, have any plans for the weekend?
+        Gin Aviator: Oh, speaking of the weekend, I heard about this awesome art exhibition happening downtown!
+        Gin Aviator: We should totally check it out after the movie. I'm all about embracing culture and creativity.
+        Gin Aviator: And don't get me started on the latest tech gadgets I've been eyeing. It's like Christmas came early!
+        Jim Bean: That sounds exciting, Gin! I'm down for an action movie.
+        Jose Cuervo: Yo también, una película de acción suena emocionante.
+        Gin Aviator: Awesome! I'll look up the movie options and showtimes. Johnnie, are you up for some action?
+        Gin Aviator: By the way, speaking of movies, did you guys see that new sci-fi trailer? Mind-blowing stuff, I tell you!
+        Gin Aviator: So, who's up for some popcorn and cinematic adventures?
+        Johnnie Walker: Late afternoon works for me.
+        Jim Bean: Yeah, Johnnie, you should join us. It'll be a blast!
+        Jose Cuervo: Estoy disponible en la tarde, cualquier hora está bien para mí.
+        Gin Aviator: Great! I'll look for action movie showtimes in the late afternoon. And after the movie, we'll head to that art exhibition, alright?
+        Gin Aviator: And Johnnie, don't worry, we'll make sure you have a fantastic time too!"""
+    ]
+    # add the contents in the thread
+    for msg in messages:
+        session.add_to_thread(msg)
+    
+    # run the thread
+    res = ic(session.run_thread())
+    ic(json.loads(res))
+
+@retry_after_random_wait(min_wait=61, max_wait=240, retry_count=5, errors=(openai.RateLimitError))
+def example_update_model():
+    messages = [f"generate python code for printing {i} to {i+10}." for i in range(0, 100, 10)]
+
+    session = OpenAIChatSession(
+        model = "mistralai/Mistral-7B-Instruct-v0.1", 
+        instructions="you are a verbose programming helper", 
+        api_key=config.get_llm_service_api_key(),
+        base_url=config.get_llm_service_base_url() # this is primarily for anyscale apis
+    )
+
+    ic(session.model)
+    for msg in messages[:len(messages)//2]:
+        # adds user message with optional name parameter for multi user chat
+        session.add_to_thread(msg)
+        # gets the response and prints
+        ic(session.run_thread())
+
+    # change modle
+    session.update_model("HuggingFaceH4/zephyr-7b-beta")
+
+    ic(session.model)
+    for msg in messages[len(messages)//2:]:
+        # adds user message with optional name parameter for multi user chat
+        session.add_to_thread(msg, name = "random_name")
+        # gets the response and prints
+        ic(session.run_thread())

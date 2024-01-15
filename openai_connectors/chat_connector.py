@@ -25,22 +25,35 @@ def create_message(role: str, msg: str, name: str = None) -> dict[str, str]:
 # this class manages a conversational thread with some built in error handling for exceeding context window and rate limiting
 class OpenAIChatSession:
 
-    # chat_model cannot be None
-    # instruction can be None
-    # service_api_key cannot be None
-    # service_org_id is primarily for openai hosted services
-    # service_url is primarily for anyscale hosted services
+    # model: the language model that would be used for this chat session. This cannot be None. Make sure this is supported by the service provider. model value can be changed later
+    # api_key: the llm service provider's api_key e.g. API KEY or personal access token for anyscale.com of openai.com public endpoints. this cannot be none
+    # organization: optional identifier for tenant of the api_key defined by the llm service provider.
+    # base_url: the endpoint of the llm service. None value will default to openai.com (https://api.openai.com/v1)
+    # instructions: optional instructions if you want the chat bot to function a certain way. This str or list[str]. Setting instructions value is specially important if you want the output format to be specific to your preference e.g. JSON blob
+    # json_mode: If you want the output message text to be formatted as a json blob. Note that you would also include an instruction text saying so e.g. provide all outputs in JSON.
+    # schema: if json_mode is set to True you can optionally specify the schema. This needs to be formatted as defined by https://json-schema.org/
+    # BUG: anyscale endpoints cannot seem to support more than 1 system message. So instructions has to be 1 str.
     def __init__(
             self, 
-            model: str,
-            instruction: str,            
-            service_api_key: str, 
-            service_org_id: str = None, 
-            service_url: str = None):
+            model: str,                       
+            api_key: str, 
+            organization: str = None, 
+            base_url: str = None,
+            instructions: str = None,
+            json_mode: bool = False,
+            schema = None):
         
-        self.openai_client = openai.OpenAI(api_key=service_api_key, organization=service_org_id, base_url=service_url)
+        self.openai_client = openai.OpenAI(api_key=api_key, organization=organization, base_url=base_url)
         self.model = model
-        self.instruction = instruction
+        self.instructions = instructions
+        if json_mode:
+            self.response_format = {"type": "json_object"}
+            if schema != None:
+                self.response_format["schema"] = schema
+            self.temperature = 0.1 # to keep output consistent
+        else:
+            self.response_format = None
+            self.temperature = 0.75 # adding some default entropy to answers.
         self.thread = []
         self.reset_window()
 
@@ -49,32 +62,54 @@ class OpenAIChatSession:
     # ext_thread is the initialization value
     def reset_window(self, ext_thread = None):
         self.thread = []
-        if self.instruction != None:
-            self.thread = [create_message("system", self.instruction)]        
+        if isinstance(self.instructions, str):        
+            self.thread = [create_message("system", self.instructions)]
+        elif isinstance(self.instructions, list):
+            self.thread = [create_message("system", inst) for inst in self.instructions]       
         if ext_thread != None:
             self.thread = self.thread + ext_thread
         return self.thread
 
-    # the retry decorator here is for dealing with rate limit. This number should change with different services
-    @retry_after_random_wait(min_wait=61, max_wait=240, retry_count=5, errors=(openai.RateLimitError))
+    def update_model(self, new_model: str):
+        if MESSAGE_TOKEN_LIMIT[new_model] < MESSAGE_TOKEN_LIMIT[self.model]:
+            # the new model has a lower token limit so adjust all the messages in a thread
+            new_thread = []
+            for msg in self.thread:
+                new_thread = new_thread + [create_message(msg['role'], msg_fraction, msg.get('name')) for msg_fraction in split_content(msg["content"], new_model)]
+            self.thread = new_thread
+        # context window will be taken care of next time when run_thread runs         
+        self.model = new_model
+    
     # this is a private utility function
     def get_chat_completion(self, ext_thread):
         # TODO: fix it for function call
-        resp = self.openai_client.chat.completions.create(
-            model = self.model,
-            messages = ext_thread,
-            temperature = 0.7, # TODO: this should become configurable
-            seed = 10000 # random number to keep the response consistent
-        )
+        if self.response_format == None:
+            resp = self.openai_client.chat.completions.create(
+                model = self.model,
+                messages = ext_thread,
+                temperature = self.temperature,
+                seed = 10000 # a random number to keep the response consistent through out the context window
+            )
+        else:
+            resp = self.openai_client.chat.completions.create(
+                model = self.model,
+                messages = ext_thread,
+                temperature = self.temperature,
+                seed = 10000, # a random number to keep the response consistent
+                response_format=self.response_format
+            ) 
+        
         return resp.choices[0].message
     
     # this is a private utility function aimed to summarize the conversation in a thread
     # this function is used iteratively by run_thread compress the content in the thread
     def create_summary_message(self, messages):
-        SUMMARY_MESSAGE_INSTRUCTION = f"create a summary of this conversation in less than {MESSAGE_TOKEN_LIMIT[self.model]} tokens. Prefix the response with the word CONTEXT SUMMARY:"
-        # instruction message is not important for creating summary
+        SUMMARY_MESSAGE_INSTRUCTION = f"create a summary of this conversation in less than {MESSAGE_TOKEN_LIMIT[self.model]} tokens. Prefix the response with the word CURRENT CONTEXT:"
+        # existing system messages are not important for creating summary
         messages = messages + [create_message("user", SUMMARY_MESSAGE_INSTRUCTION)]
-        return create_message("assistant", self.get_chat_completion(messages).content)
+        # save the context as a user message
+        # TODO: check if it is better to save it as system message
+        return create_message("user", self.get_chat_completion(messages).content)
 
     # internal utility function for creating a summerized thread from the messages
     # the summarization of the conversation would be represented as a user message
@@ -104,7 +139,7 @@ class OpenAIChatSession:
     # passes the entire existing thread to the service for running.
     # this takes care of the context window if it gets bigger. 
     # it summarizes the existing content and creates 1 message for context
-    def run_thread(self):
+    def run_thread(self, json_mode = False):
         # checking if the current thread exceeds the context window
         window_token_count = count_tokens_for_messages(self.thread, self.model)
         # leave some room for response so minus the message token limit
