@@ -1,6 +1,5 @@
 .venv
-__pycache__
-openai_connectors/__pycache__
+*__pycache__*
 test_*
 openai_utilities.egg-info
 build
@@ -8,4 +7,3 @@ dist
 *.env
 run_examples.py
 embedding_search.py
-output.txt

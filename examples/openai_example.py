@@ -1,9 +1,9 @@
 import openai
 from . import config
-from chat import ChatAgent, create_message, slide_context_window, empty_context_window
-from embeddings import EmbeddingAgent
-from retryutils import retry_after_random_wait
-from tokenutils import count_tokens, count_tokens_for_messages, split_content
+from openai_utilities.chat import ChatAgent, create_message, slide_context_window, empty_context_window
+from openai_utilities.embeddings import EmbeddingAgent
+from openai_utilities.retryutils import retry_after_random_wait
+from openai_utilities.tokenutils import count_tokens, count_tokens_for_messages, split_content
 from icecream import ic
 from functools import reduce
 import json

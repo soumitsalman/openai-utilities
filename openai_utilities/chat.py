@@ -1,7 +1,7 @@
 from enum import Enum
 import os
 import openai
-from tokenutils import count_tokens_for_messages, count_tokens_for_message, split_content, MESSAGE_TOKEN_LIMIT, CONTEXT_WINDOW
+from .tokenutils import count_tokens_for_messages, count_tokens_for_message, split_content, MESSAGE_TOKEN_LIMIT, CONTEXT_WINDOW
 from icecream import ic
 from functools import reduce
 

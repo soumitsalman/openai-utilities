@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from scipy import spatial
-from tokenutils import split_content
+from .tokenutils import split_content
 from enum import Enum
 
 # the currently supported models in this code
