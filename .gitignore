@@ -7,3 +7,5 @@ build
 dist
 *.env
 run_examples.py
+embedding_search.py
+output.txt
